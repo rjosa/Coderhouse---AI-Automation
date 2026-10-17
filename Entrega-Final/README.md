@@ -19,7 +19,7 @@ Ecosistema autónomo que genera contenido educativo para Instagram sobre trámit
 |---|---|
 | 📄 Documento de entrega | [Google Doc](https://docs.google.com/document/d/1pQULG1twStgdn2DjVEiNJvQl20YDuyR8ECX0SYye1T0/edit?usp=sharing) · [PDF en el repo](./docs/Entrega_Final_AI_Automation_Ricardo_Josa.pdf) |
 | 🎬 Video demo (3 min) | https://youtu.be/dMU-k2jlhec |
-| 📊 Dashboard de KPIs (Shared View pública) | https://airtable.com/appJBMsP4mvkNRtX8/shrcJgNW9fhlaMOKn/tblV3hHeQrxBDNDMO |
+| 📊 Dashboard de KPIs (Shared View pública) | https://airtable.com/appJBMsP4mvkNRtX8/shrcJgNW9fhIaMOKn/tblV3hHeQrxBDNDMO |
 | 🗂️ Base de datos (solo lectura) · Content | https://airtable.com/appJBMsP4mvkNRtX8/shryemI2kjEcNvxUC/tblWZq3FN7hiCDuA7 |
 | 🗂️ Base de datos (solo lectura) · Log de Errores | https://airtable.com/appJBMsP4mvkNRtX8/shrHJnO3isSTlKYFc/tbls7kY8zIuQFuMat |
 | 🗂️ Base de datos (solo lectura) · Solicitantes | https://airtable.com/appJBMsP4mvkNRtX8/shrYu4IXhxmQBEDdP/tblzFzbB0j3b3Yv8G |
