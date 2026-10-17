@@ -23,6 +23,8 @@ Ecosistema autónomo que genera contenido educativo para Instagram sobre trámit
 | 🗂️ Base de datos (solo lectura) · Content | https://airtable.com/appJBMsP4mvkNRtX8/shryemI2kjEcNvxUC/tblWZq3FN7hiCDuA7 |
 | 🗂️ Base de datos (solo lectura) · Log de Errores | https://airtable.com/appJBMsP4mvkNRtX8/shrHJnO3isSTlKYFc/tbls7kY8zIuQFuMat |
 | 🗂️ Base de datos (solo lectura) · Solicitantes | https://airtable.com/appJBMsP4mvkNRtX8/shrYu4IXhxmQBEDdP/tblzFzbB0j3b3Yv8G |
+| 🔧 Blueprint JSON · flujo principal | [Drive](https://drive.google.com/file/d/12SIWAtjaGD0JcJbtNbn9fmbJ5SbNKorn/view?usp=sharing) · [En el repo](./workflows/AI_Automation_-_Entrega_Final.json) |
+| 🔧 Blueprint JSON · Error Workflow | [Drive](https://drive.google.com/file/d/1kjR486NlzxmM_Rlqi5NV_Xrv6ebbM7Jy/view?usp=sharing) · [En el repo](./workflows/AI_Automation_-_Entrega_Final_-_Manejo_de_Errores.json) |
 
 ---
 
