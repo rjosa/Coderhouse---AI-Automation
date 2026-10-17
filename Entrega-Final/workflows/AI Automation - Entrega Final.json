@@ -1,0 +1,3031 @@
+{
+  "name": "AI Automation - Entrega Final",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "80ce4144-7815-47d2-8636-4d6cbe7eb81d",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1648,
+        -1056
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "databasePage",
+        "operation": "getAll",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "9b95ec7c-e642-4a4e-a973-8810d9009414",
+          "mode": "list",
+          "cachedResultName": "Base RAG – Trámites automotores Argentina",
+          "cachedResultUrl": "https://app.notion.com/p/21da35d7be924ef8b6b0ab0b309f0b1d"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "6f0c1e86-d3b4-4f32-8b6c-0e2a88940730",
+      "name": "Get many database pages",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        -1376,
+        -1056
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "notionOAuth2Api": {
+          "id": "0SHBkNrsfWsAMCjV",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => {\n  const d = i.json;\n  return { json: {\n    texto: `${d.property_tema}\\n${d.property_contenido}`,\n    tema: d.property_tema,\n    categoria: d.property_categoría,\n    fuente: d.property_fuente || ''\n  }};\n});"
+      },
+      "id": "fa75b8bc-ae2d-42d5-866e-47558dae79d1",
+      "name": "Preparar texto1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        -1056
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "value": "notion_rag",
+          "mode": "id"
+        },
+        "clearStore": true
+      },
+      "id": "1ac42212-31fb-48b2-8293-5521d20bf6cd",
+      "name": "In-Memory Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        -1056
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f9af06ed-00f7-47c8-bd41-8286a166541a",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        -848
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Creación de RAG en BD Vectorial",
+        "height": 432,
+        "width": 1332,
+        "color": 4
+      },
+      "id": "4904f6ad-ffe3-47bf-b668-403ff0e89598",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        -1136
+      ]
+    },
+    {
+      "parameters": {
+        "trigger": [
+          "message"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "C0C9F7Y729K",
+          "mode": "list",
+          "cachedResultName": "ai-automation"
+        },
+        "options": {}
+      },
+      "id": "1c52c920-c6c8-4696-9979-b40f67f27d5b",
+      "name": "Slack Trigger",
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1680,
+        -112
+      ],
+      "retryOnFail": false,
+      "webhookId": "db0a0175-a92a-4b31-8056-ea8755ec82cb",
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Solicitante: {{ $('Busco Solicitante').item.json.fields.Nombre }}\nFecha: {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('dd/MM/yyyy') }}\nMensaje: {{ $('Slack Trigger').item.json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Sos un asistente que genera contenido para Instagram sobre trámites automotores en Argentina (transferencias, costos, verificación policial, documentación, formularios, glosario, mitos y errores frecuentes). Solo podés trabajar con información que exista en la base de conocimiento, a la que accedés con la herramienta Vector Store.\n\nTu trabajo tiene dos etapas:\n\nETAPA 1 – Identificar y validar la semilla\n- Si el mensaje es un saludo, una pregunta general o no contiene un tema concreto, NO uses la herramienta. Presentate brevemente, explicá que generás contenido para Instagram sobre trámites automotores y pedí la \"semilla\" (el tema del post).\n- Si el usuario propone un tema, usá la herramienta UNA vez para verificar que exista información sobre ese tema en la base.\n- Si no hay información, decilo y sugerí 2 o 3 temas relacionados que sí estén en la base.\n- Si hay información, reformulá el tema en una frase corta y pedí confirmación explícita: \"¿Confirmás que el contenido sea sobre: [tema]?\"\n- Solo considerás la semilla validada cuando el usuario confirma explícitamente (sí, dale, confirmo, correcto, etc.). Una mención del tema sin confirmación no alcanza.\n- Cada mensaje llega con \"Solicitante\", \"Fecha\" y \"Mensaje\". Respondé siempre a \"Mensaje\"; usá el nombre del solicitante solo para saludarlo en \"respuesta\" y nunca lo incluyas en \"contenido\".\n\nETAPA 2 – Generar el contenido (solo con la semilla validada)\n- Usá la herramienta como máximo una vez más si necesitás más datos.\n- Generá el texto del post para Instagram usando exclusivamente la información recuperada. No inventes datos, montos ni plazos; si un dato no está en la base, no lo incluyas.\n- Tono claro, cercano y práctico, dirigido a particulares. Cerrá con una llamada a la acción.\n- Incluí emojis para enriquecer el post y que no sea tan formal.\n- El contenido NO se envía al chat: va en el campo \"contenido\". En \"respuesta\" solo avisás al usuario que el tema quedó confirmado y que el contenido pasa a desarrollo.\n- El campo \"contenido\" es el texto final del post. No incluyas ofrecimientos ni preguntas dirigidas al usuario del chat (por ejemplo \"¿Querés que arme...?\"). Si querés invitar a interactuar, usá una llamada a la acción para la audiencia de Instagram, como \"Guardá este post\" o \"Contanos en comentarios\".\n- Escribí el contenido en texto plano, sin Markdown ni asteriscos.\n\nFORMATO DE SALIDA\nRespondé siempre y únicamente con este JSON:\n{\n  \"estado\": \"conversando\" o \"validado\",\n  \"respuesta\": \"mensaje breve para el usuario\",\n  \"semilla\": \"tema confirmado, vacío si estado es conversando\",\n  \"contenido\": \"texto del post, vacío si estado es conversando\"\n}"
+        }
+      },
+      "id": "6963bd05-02e7-4ea9-9fcd-ae13bdf4847a",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -64,
+        -304
+      ],
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Slack Trigger').item.json.user }}"
+      },
+      "id": "cc70d9aa-6d1f-4f83-93ed-02f83594c325",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -144,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca información en la base de conocimiento sobre trámites automotores en Argentina (transferencias, costos, formularios, glosario, mitos, errores frecuentes, preguntas frecuentes). Usala una vez por consulta con una búsqueda en español.",
+        "memoryKey": {
+          "__rl": true,
+          "value": "notion_rag",
+          "mode": "list",
+          "cachedResultName": "notion_rag"
+        },
+        "topK": 5,
+        "includeDocumentMetadata": false
+      },
+      "id": "fa738164-0432-4749-923b-566a218bbb1d",
+      "name": "Simple Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        -48,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e685a8c2-f112-4120-a621-4b506e6589aa",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -16,
+        64
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -896,
+        -848
+      ],
+      "id": "46b1872d-07bc-406d-b6d8-aece845915ee",
+      "name": "Embeddings OpenAI1",
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblWZq3FN7hiCDuA7",
+          "mode": "list",
+          "cachedResultName": "Content",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tblWZq3FN7hiCDuA7"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Estado": "Generando",
+            "Fecha_de_Creacion": "={{ $now.setZone('America/Argentina/Buenos_Aires').toISO() }}",
+            "Tema": "={{ $('AI Agent').item.json.output.semilla }}",
+            "Solicitante": "={{ [$('Busco Solicitante').item.json.id] }}",
+            "KPI": "={{ [$('Config').item.json.kpi_record_id] }}",
+            "Fecha_de_Actualizacion": "={{ $now.setZone('America/Argentina/Buenos_Aires').toISO() }}",
+            "Slack_Thread_TS": "={{ $('Config').item.json.thread_ts }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Tema",
+              "displayName": "Tema",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Solicitante",
+              "displayName": "Solicitante",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Generando",
+                  "value": "Generando"
+                },
+                {
+                  "name": "En Revisión",
+                  "value": "En Revisión"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                },
+                {
+                  "name": "Publicado",
+                  "value": "Publicado"
+                },
+                {
+                  "name": "Error",
+                  "value": "Error"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_de_Creacion",
+              "displayName": "Fecha_de_Creacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Borrador_Generado",
+              "displayName": "Borrador_Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha_de_Actualizacion",
+              "displayName": "Fecha_de_Actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack_Thread_TS",
+              "displayName": "Slack_Thread_TS",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "KPI",
+              "displayName": "KPI",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Log_de_Errores",
+              "displayName": "Log_de_Errores",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        -256
+      ],
+      "id": "85d4c240-2257-45e5-be54-b64500dab181",
+      "name": "Inserto Registro en Tabla de Tracking",
+      "retryOnFail": false,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "=El contenido relacionado con \"{{ $('AI Agent').item.json.output.semilla }}\" está en proceso de desarrollo. Te avisaremos a medida que avance el proceso. Gracias!",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "a3cf60da-6be4-4819-986c-acbfbedb704a",
+      "name": "Envio Mensaje de Recepción",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        -448
+      ],
+      "webhookId": "339d2b8a-7632-4a39-ba51-d711a10f7eb6",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "=El contenido relacionado con \"{{ $('AI Agent').item.json.output.semilla }}\" ya se encuentra en proceso de revisión. Te avisaremos a medida que avance el proceso. Gracias!",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "21dff40f-6481-4214-a4fd-ef2abfe0158c",
+      "name": "Envio Mensaje de Estado Revisión",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        2400,
+        -464
+      ],
+      "webhookId": "ac89985b-4515-4b9c-b2c9-c42e1d35e2a4",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "={{ $('Config').item.json.email_revisor }}",
+        "subject": "=Generación de Contenido IG: \"{{ $json.fields.Tema}}\"",
+        "message": "=Se generó éste nuevo contenido que te enviamos para revisar:\n\n{{ $json.fields.Borrador_Generado }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "Aprobar",
+            "disapproveLabel": "Rechazar"
+          }
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 24
+            }
+          },
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        -272
+      ],
+      "id": "f5676960-649e-495b-ab01-bd7ada50fc1f",
+      "name": "Envío Mail de Revisión - HITL",
+      "webhookId": "137bffa4-1ba0-46dd-80c1-c79344a99217",
+      "retryOnFail": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VuxDuQ3Gt20l4NiA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblWZq3FN7hiCDuA7",
+          "mode": "list",
+          "cachedResultName": "Content",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tblWZq3FN7hiCDuA7"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Inserto Registro en Tabla de Tracking').item.json.id }}",
+            "Estado": "En Revisión",
+            "Fecha_de_Actualizacion": "={{ $now.setZone('America/Argentina/Buenos_Aires').toISO() }}",
+            "Borrador_Generado": "={{ $('AI Agent').item.json.output.contenido }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Tema",
+              "displayName": "Tema",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Solicitante",
+              "displayName": "Solicitante",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Generando",
+                  "value": "Generando"
+                },
+                {
+                  "name": "En Revisión",
+                  "value": "En Revisión"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                },
+                {
+                  "name": "Publicado",
+                  "value": "Publicado"
+                },
+                {
+                  "name": "Error",
+                  "value": "Error"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_de_Creacion",
+              "displayName": "Fecha_de_Creacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Borrador_Generado",
+              "displayName": "Borrador_Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha_de_Actualizacion",
+              "displayName": "Fecha_de_Actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack_Thread_TS",
+              "displayName": "Slack_Thread_TS",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "KPI",
+              "displayName": "KPI",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Log_de_Errores",
+              "displayName": "Log_de_Errores",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1984,
+        -256
+      ],
+      "id": "b0936789-97ba-43c0-b6c1-7e91ab858951",
+      "name": "Cambio de Estado Revisión",
+      "alwaysOutputData": false,
+      "retryOnFail": false,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2636df22-bd68-409a-a0e7-50c64440b7b1",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2640,
+        -272
+      ],
+      "id": "43dbf8de-d754-4c61-ab55-f28ab1403324",
+      "name": "Revisión Aprobada?",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"estado\": \"conversando\",\n  \"respuesta\": \"texto\",\n  \"semilla\": \"\",\n  \"contenido\": \"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        -16
+      ],
+      "id": "f67f91f2-b0e4-4f95-ba31-0ea899b465f3",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "=\t{{ $('AI Agent').item.json.output.respuesta }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "976aae6c-0a9f-4d3d-846e-5c3428f20e99",
+      "name": "Envio Mensaje de Conversación",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        912,
+        -176
+      ],
+      "webhookId": "15db1819-552b-4742-a42d-4b68ca99461a",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1776,
+        -256
+      ],
+      "id": "d8ffd8f0-1df2-4b8c-8293-86bc0898407a",
+      "name": "Wait",
+      "webhookId": "af9826c1-0073-4045-8da8-3a0a99bdf919"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0c001923-044a-468d-8f11-cf22057d3bab",
+              "leftValue": "={{ $json.bot_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "644f5da5-fe95-4694-a87e-3d8b3ce3ae83",
+              "leftValue": "={{ $('Slack Trigger').item.json.channel }}",
+              "rightValue": "={{ $json.canal_contenido }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "60ebefe6-60b8-4002-af2f-a82fe78be0d6",
+              "leftValue": "={{ !$json.subtype || $json.subtype === 'file_share' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1216,
+        -112
+      ],
+      "id": "60ce14a9-1279-472d-bb4c-108f88e6f9e9",
+      "name": "Mensaje de Persona?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c31a3c44-d801-4bed-bf94-b499774f3daa",
+              "leftValue": "={{ $json.output.estado }}",
+              "rightValue": "validado",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -320
+      ],
+      "id": "f5061d60-d601-4611-ba05-d7f5412df207",
+      "name": "Semilla Validada?"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "=El contenido relacionado con \"{{ $json.fields.Tema }}\" fue Aprobado y Publicado!!!\n\nContenido:\n\n{{ $json.fields.Borrador_Generado }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "ab70f1c9-a3a7-4560-aaa7-4c8ae38c56be",
+      "name": "Envio Mensaje Final al Usuario - Aprobado",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        3792,
+        -384
+      ],
+      "webhookId": "13b2910e-2916-4b5e-bbb7-94e3561c5928",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "=El contenido relacionado con \"{{ $json.fields.Tema }}\" lamentablemente fue Rechazado.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "e8d56666-2aee-4084-9ea6-c6cc638ebcc2",
+      "name": "Envio Mensaje Final al Usuario - Rechazado",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        3216,
+        64
+      ],
+      "webhookId": "85b77894-f882-4c32-aab7-0334cd9f5778",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblWZq3FN7hiCDuA7",
+          "mode": "list",
+          "cachedResultName": "Content",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tblWZq3FN7hiCDuA7"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Cambio de Estado Revisión').item.json.id }}",
+            "Estado": "Aprobado",
+            "Aprobado": true,
+            "Fecha_de_Actualizacion": "={{ $now.setZone('America/Argentina/Buenos_Aires').toISO() }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Tema",
+              "displayName": "Tema",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Solicitante",
+              "displayName": "Solicitante",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Generando",
+                  "value": "Generando"
+                },
+                {
+                  "name": "En Revisión",
+                  "value": "En Revisión"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                },
+                {
+                  "name": "Publicado",
+                  "value": "Publicado"
+                },
+                {
+                  "name": "Error",
+                  "value": "Error"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_de_Creacion",
+              "displayName": "Fecha_de_Creacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Borrador_Generado",
+              "displayName": "Borrador_Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_de_Actualizacion",
+              "displayName": "Fecha_de_Actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack_Thread_TS",
+              "displayName": "Slack_Thread_TS",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "KPI",
+              "displayName": "KPI",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Log_de_Errores",
+              "displayName": "Log_de_Errores",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3008,
+        -384
+      ],
+      "id": "3bcdaa8e-7d21-4aa5-8f1a-9f90d8df45f0",
+      "name": "Actualizo Registro Aprobado",
+      "alwaysOutputData": false,
+      "retryOnFail": false,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblWZq3FN7hiCDuA7",
+          "mode": "list",
+          "cachedResultName": "Content",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tblWZq3FN7hiCDuA7"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Cambio de Estado Revisión').item.json.id }}",
+            "Estado": "Rechazado",
+            "Fecha_de_Actualizacion": "={{ $now.setZone('America/Argentina/Buenos_Aires').toISO() }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Tema",
+              "displayName": "Tema",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Solicitante",
+              "displayName": "Solicitante",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Generando",
+                  "value": "Generando"
+                },
+                {
+                  "name": "En Revisión",
+                  "value": "En Revisión"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                },
+                {
+                  "name": "Publicado",
+                  "value": "Publicado"
+                },
+                {
+                  "name": "Error",
+                  "value": "Error"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_de_Creacion",
+              "displayName": "Fecha_de_Creacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Borrador_Generado",
+              "displayName": "Borrador_Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha_de_Actualizacion",
+              "displayName": "Fecha_de_Actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack_Thread_TS",
+              "displayName": "Slack_Thread_TS",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "KPI",
+              "displayName": "KPI",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Log_de_Errores",
+              "displayName": "Log_de_Errores",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3008,
+        64
+      ],
+      "id": "d07e2ba8-346a-466b-9a91-ea16aaabd01e",
+      "name": "Actualizo Registro Rechazado",
+      "alwaysOutputData": false,
+      "retryOnFail": false,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblWZq3FN7hiCDuA7",
+          "mode": "list",
+          "cachedResultName": "Content",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tblWZq3FN7hiCDuA7"
+        },
+        "filterByFormula": "=AND(RECORD_ID() = '{{ $('Cambio de Estado Revisión').item.json.id }}', {Estado} = 'Aprobado', {Aprobado} = TRUE())",
+        "returnAll": false,
+        "limit": 1,
+        "options": {},
+        "sort": {
+          "property": []
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3216,
+        -384
+      ],
+      "id": "d6bf1484-e6ca-4a81-be56-9e830b9fbb93",
+      "name": "Busco Registro Aprobado",
+      "alwaysOutputData": false,
+      "retryOnFail": false,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Config').item.json.email_publicacion }}",
+        "subject": "Publicación de Contenido",
+        "emailType": "text",
+        "message": "=Se publica el siguiente contenido en Instagram:\n\n{{ $json.fields.Borrador_Generado }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3408,
+        -384
+      ],
+      "id": "bb49f8c8-5f54-4b04-9816-9dd26e120588",
+      "name": "Simula Publicación de Contenido",
+      "webhookId": "fa375ca5-9b60-48b1-b321-2705ad27d7e4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VuxDuQ3Gt20l4NiA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblWZq3FN7hiCDuA7",
+          "mode": "list",
+          "cachedResultName": "Content",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tblWZq3FN7hiCDuA7"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Cambio de Estado Revisión').item.json.id }}",
+            "Fecha_de_Actualizacion": "={{ $now.setZone('America/Argentina/Buenos_Aires').toISO() }}",
+            "Estado": "Publicado"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Tema",
+              "displayName": "Tema",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Solicitante",
+              "displayName": "Solicitante",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Generando",
+                  "value": "Generando"
+                },
+                {
+                  "name": "En Revisión",
+                  "value": "En Revisión"
+                },
+                {
+                  "name": "Aprobado",
+                  "value": "Aprobado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                },
+                {
+                  "name": "Publicado",
+                  "value": "Publicado"
+                },
+                {
+                  "name": "Error",
+                  "value": "Error"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_de_Creacion",
+              "displayName": "Fecha_de_Creacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Borrador_Generado",
+              "displayName": "Borrador_Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Fecha_de_Actualizacion",
+              "displayName": "Fecha_de_Actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Slack_Thread_TS",
+              "displayName": "Slack_Thread_TS",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "KPI",
+              "displayName": "KPI",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Log_de_Errores",
+              "displayName": "Log_de_Errores",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3600,
+        -384
+      ],
+      "id": "3d8a54ab-7f94-414a-98e2-c0c7bc27f534",
+      "name": "Actualizo Registro Publicado",
+      "alwaysOutputData": false,
+      "retryOnFail": false,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 2000,
+          "reasoningEffort": "low"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        0
+      ],
+      "id": "64067315-0181-4127-8dc1-8eec9a4625ef",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "=No pude procesar tu pedido, probá nuevamente dentro de unos minutos.\nDisculpas y Gracias!",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "2a2437d3-1cae-483c-8543-31f662708857",
+      "name": "Envio Mensaje de Error a Usuario",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        1200,
+        -16
+      ],
+      "webhookId": "60d7f2d6-4480-4f92-8951-ff44aac5298d",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Config').item.json.email_revisor }}",
+        "subject": "Error en Agente AI",
+        "emailType": "text",
+        "message": "=Detalle técnico: {{ $json.error }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "f7868388-2c68-4199-814b-3915647f044a",
+      "name": "Envio Mensaje de Error al Admin",
+      "webhookId": "a496b6a4-a11d-4c31-bda4-b2dbc3dee219",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VuxDuQ3Gt20l4NiA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4113bc11-659b-46f8-80e3-785299a02d82",
+              "name": "canal_contenido",
+              "value": "C0C9F7Y729K",
+              "type": "string"
+            },
+            {
+              "id": "3e376365-dac5-4642-b6eb-77f0b24c4b11",
+              "name": "canal_errores",
+              "value": "C0CAETMF332",
+              "type": "string"
+            },
+            {
+              "id": "f1d2861f-1c06-40e5-9b92-49422c9b753f",
+              "name": "email_revisor",
+              "value": "ricardojosa@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "047bc8ae-2189-41a7-8f54-5e5d6d82f685",
+              "name": "email_publicacion",
+              "value": "ricardojosa@gmail.com",
+              "type": "string"
+            },
+            {
+              "id": "7f9043a3-4359-4818-af85-bb52e22d3f3a",
+              "name": "kpi_record_id",
+              "value": "recQRPfyVihTqUNs6",
+              "type": "string"
+            },
+            {
+              "id": "01ab5b15-dd7b-49bd-8b16-1a0357dcbfbc",
+              "name": "thread_ts",
+              "value": "={{ $('Slack Trigger').item.json.thread_ts || $('Slack Trigger').item.json.ts }}",
+              "type": "string"
+            },
+            {
+              "id": "5c0195dc-7f56-4c4e-b749-995293c09b5c",
+              "name": "n8n_base_url",
+              "value": "https://rjosa2.app.n8n.cloud",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -1456,
+        -112
+      ],
+      "id": "8e9e11b3-dc83-4a34-9777-5339587bc1f8",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "17cd06da-5fcc-431d-b4b4-420d1edd9b85",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1392,
+        80
+      ],
+      "id": "4f38c5a5-f957-4556-ba09-a65e66228154",
+      "name": "Solicitante Registrado?"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblzFzbB0j3b3Yv8G",
+          "mode": "list",
+          "cachedResultName": "Solicitantes",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tblzFzbB0j3b3Yv8G"
+        },
+        "filterByFormula": "={Slack_User_ID} = '{{ $('Slack Trigger').item.json.user }}'",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1616,
+        80
+      ],
+      "id": "8e46def1-af96-4871-87cd-d6e6321c0b84",
+      "name": "Busco Solicitante",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "Perdón, pero tu usuario no está habilitado para solicitar contenido. Ponte en contacto con el Administrador.",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        -1136,
+        144
+      ],
+      "id": "79cabdd9-7933-49d4-9fdf-c053030fb3d4",
+      "name": "Aviso Usuario No Registrado",
+      "webhookId": "872071f7-dde5-4f66-893f-0eb92afc579b",
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d964ce64-3a25-472e-af98-01ab7e9fd980",
+              "name": "tipo",
+              "value": "Fallo AI",
+              "type": "string"
+            },
+            {
+              "id": "d48015a1-66c5-409f-b80f-2a0b3c729c4a",
+              "name": "nodo",
+              "value": "AI Agent",
+              "type": "string"
+            },
+            {
+              "id": "4fa73375-4317-469f-b0be-c7360cf6ff50",
+              "name": "mensaje",
+              "value": "={{ $json.error }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        848,
+        64
+      ],
+      "id": "f271ede7-81ee-4a30-ab34-52884128ee4c",
+      "name": "Error: Fallo AI"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d964ce64-3a25-472e-af98-01ab7e9fd980",
+              "name": "tipo",
+              "value": "Datos Faltantes",
+              "type": "string"
+            },
+            {
+              "id": "d48015a1-66c5-409f-b80f-2a0b3c729c4a",
+              "name": "nodo",
+              "value": "Busco Solicitante",
+              "type": "string"
+            },
+            {
+              "id": "4fa73375-4317-469f-b0be-c7360cf6ff50",
+              "name": "mensaje",
+              "value": "=Usuario de Slack \"{{ $json.real_name }}\" ({{ $('Slack Trigger').item.json.user }}) no registrado",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -912,
+        320
+      ],
+      "id": "ad30274d-0ef6-47d3-97e7-744725c0c444",
+      "name": "Error: Usuario No Registrado"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appJBMsP4mvkNRtX8",
+          "mode": "list",
+          "cachedResultName": "AI Content Monitoring",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbls7kY8zIuQFuMat",
+          "mode": "list",
+          "cachedResultName": "Log de Errores",
+          "cachedResultUrl": "https://airtable.com/appJBMsP4mvkNRtX8/tbls7kY8zIuQFuMat"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now.setZone('America/Argentina/Buenos_Aires').toISO() }}",
+            "Tipo": "={{ $json.tipo }}",
+            "Nodo": "={{ $json.nodo }}",
+            "Mensaje": "={{ $json.mensaje }}",
+            "Link_Ejecucion": "={{ $('Config').item.json.n8n_base_url }}/workflow/{{ $workflow.id }}/executions/{{ $execution.id }}",
+            "KPIs": "={{ [$('Config').item.json.kpi_record_id] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Tipo",
+              "displayName": "Tipo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Fallo AI",
+                  "value": "Fallo AI"
+                },
+                {
+                  "name": "Fallo API",
+                  "value": "Fallo API"
+                },
+                {
+                  "name": "Datos Faltantes",
+                  "value": "Datos Faltantes"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Nodo",
+              "displayName": "Nodo",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Mensaje",
+              "displayName": "Mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Link_Ejecucion",
+              "displayName": "Link_Ejecucion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Content_ID",
+              "displayName": "Content_ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "KPIs",
+              "displayName": "KPIs",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1504,
+        480
+      ],
+      "id": "8aff8bba-27df-499f-a513-dd47e4989513",
+      "name": "Registro de Log de Errores",
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "YU2OIaK7shjO85qL",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "user",
+        "user": {
+          "__rl": true,
+          "value": "={{ $('Slack Trigger').item.json.user }}",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        -1136,
+        320
+      ],
+      "id": "13dffd6e-018a-48c2-b165-da131631ac04",
+      "name": "Busco Nombre Usuario en Slack",
+      "webhookId": "872071f7-dde5-4f66-893f-0eb92afc579b",
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fe235ebb-fb6a-4b00-a989-67b3e8c1efec",
+              "leftValue": "={{ ($('Slack Trigger').item.json.text ?? '').trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -912,
+        -32
+      ],
+      "id": "b1a18276-4599-49b6-99b4-89198a154e15",
+      "name": "Mensaje con Texto?"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Config').item.json.canal_contenido}}",
+          "mode": "id"
+        },
+        "text": "=Necesito un mensaje de texto con el tema del contenido para poder procesar tu pedido.\nGracias!",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "thread_ts": {
+            "replyValues": {
+              "thread_ts": "={{ $('Config').item.json.thread_ts }}"
+            }
+          }
+        }
+      },
+      "id": "185c60e8-0851-4f21-95e2-b3d3aca068ce",
+      "name": "Aviso de Mensaje Vacio",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        -672,
+        48
+      ],
+      "webhookId": "60d7f2d6-4480-4f92-8951-ff44aac5298d",
+      "retryOnFail": false,
+      "credentials": {
+        "slackApi": {
+          "id": "JfcfgWhO3Yyd851Z",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d964ce64-3a25-472e-af98-01ab7e9fd980",
+              "name": "tipo",
+              "value": "Datos Faltantes",
+              "type": "string"
+            },
+            {
+              "id": "d48015a1-66c5-409f-b80f-2a0b3c729c4a",
+              "name": "nodo",
+              "value": "Slack Trigger",
+              "type": "string"
+            },
+            {
+              "id": "4fa73375-4317-469f-b0be-c7360cf6ff50",
+              "name": "mensaje",
+              "value": "=Mensaje sin texto del usuario \"{{ $('Busco Solicitante').item.json.fields.Nombre }}\" ({{ $('Slack Trigger').item.json.user }})",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -672,
+        208
+      ],
+      "id": "96d8a7ce-ba64-4afd-8911-ed609b94d9a8",
+      "name": "Error: Mensaje Vacio"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e780f76e-9293-4c43-be7a-9f0722a94a3f",
+              "leftValue": "={{ ($('AI Agent').item.json.output.semilla ?? '').trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a7605c2e-cf35-423a-9c63-dc5060ab5422",
+              "leftValue": "={{ ($('AI Agent').item.json.output.contenido ?? '').trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        -336
+      ],
+      "id": "f65da317-3b96-438c-aee3-329281815664",
+      "name": "Salida AI Completa?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d964ce64-3a25-472e-af98-01ab7e9fd980",
+              "name": "tipo",
+              "value": "Datos Faltantes",
+              "type": "string"
+            },
+            {
+              "id": "d48015a1-66c5-409f-b80f-2a0b3c729c4a",
+              "name": "nodo",
+              "value": "AI Agent",
+              "type": "string"
+            },
+            {
+              "id": "4fa73375-4317-469f-b0be-c7360cf6ff50",
+              "name": "mensaje",
+              "value": "La AI devolvió estado \"Validado\", sin semilla y/o sin contenido.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1264,
+        -208
+      ],
+      "id": "dd7b53a9-146e-45a8-ba52-95bd73131931",
+      "name": "Error: Salida AI Incompleta"
+    },
+    {
+      "parameters": {
+        "content": "## Inicio: Recepción de mensaje desde Slack\n## Validación de mensaje proveniente de una persona y no de un bot\n## Validación de solicitante registrado\n## Validación de envío de mensaje de texto",
+        "height": 848,
+        "width": 1328
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1776,
+        -336
+      ],
+      "typeVersion": 1,
+      "id": "19f5c348-dbe3-468d-be93-884f2aaa271d",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Agente AI\n## Busca información y responde sólo en base al contenido que se encuentra en la base de datos vectorial generada con datos provenientes de Notion",
+        "height": 704,
+        "width": 880,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -400,
+        -480
+      ],
+      "typeVersion": 1,
+      "id": "b1c0a6fd-13e8-4121-8211-4fdb39793ed5",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Trackeo de fallos del Agente AI",
+        "height": 688,
+        "width": 912,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        528,
+        -464
+      ],
+      "typeVersion": 1,
+      "id": "820c7107-a878-4698-9fa4-9bbd00ea9b0f",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Registro de errores en Airtable",
+        "height": 352,
+        "width": 496,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1312,
+        368
+      ],
+      "typeVersion": 1,
+      "id": "3aeed6b6-a7af-4f91-a2e6-ae9e8adae034",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Registro de solicitud en Airtable\n## Interacción con el usuario",
+        "height": 544,
+        "width": 704,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1472,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "bbf29f66-8d16-405f-9b23-765b0a7b906f",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## HITL\n## Envío de Validación y espera de resultado",
+        "height": 528,
+        "width": 592,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2240,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "bef3d6e9-fd9f-40fb-be0f-bc7531d5dcaa",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Contenido Autorizado!\n## Actualización de registro en Airtable\n## Publicación del contenido\n## Interacción con el usuario",
+        "height": 400,
+        "width": 1136,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2880,
+        -576
+      ],
+      "typeVersion": 1,
+      "id": "5813f419-4241-4b2b-8564-fc43e4805428",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Contenido Rechazado\n## Actualización de registro en Airtable\n## Interacción con el usuario",
+        "height": 400,
+        "width": 560,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2880,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "dae10e40-9064-4fab-8f30-22e3c4cf5a0f",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1648,
+        -896
+      ],
+      "id": "98b56bc5-8f7a-45c3-8079-7d4d677243c0",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many database pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many database pages": {
+      "main": [
+        [
+          {
+            "node": "Preparar texto1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar texto1": {
+      "main": [
+        [
+          {
+            "node": "In-Memory Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "In-Memory Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Semilla Validada?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envio Mensaje de Error a Usuario",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Envio Mensaje de Error al Admin",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error: Fallo AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Simple Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "In-Memory Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserto Registro en Tabla de Tracking": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envio Mensaje de Recepción": {
+      "main": [
+        []
+      ]
+    },
+    "Cambio de Estado Revisión": {
+      "main": [
+        [
+          {
+            "node": "Envío Mail de Revisión - HITL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Envio Mensaje de Estado Revisión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío Mail de Revisión - HITL": {
+      "main": [
+        [
+          {
+            "node": "Revisión Aprobada?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revisión Aprobada?": {
+      "main": [
+        [
+          {
+            "node": "Actualizo Registro Aprobado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Actualizo Registro Rechazado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Cambio de Estado Revisión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje de Persona?": {
+      "main": [
+        [
+          {
+            "node": "Busco Solicitante",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Semilla Validada?": {
+      "main": [
+        [
+          {
+            "node": "Salida AI Completa?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envio Mensaje de Conversación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizo Registro Aprobado": {
+      "main": [
+        [
+          {
+            "node": "Busco Registro Aprobado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizo Registro Rechazado": {
+      "main": [
+        [
+          {
+            "node": "Envio Mensaje Final al Usuario - Rechazado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busco Registro Aprobado": {
+      "main": [
+        [
+          {
+            "node": "Simula Publicación de Contenido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simula Publicación de Contenido": {
+      "main": [
+        [
+          {
+            "node": "Actualizo Registro Publicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizo Registro Publicado": {
+      "main": [
+        [
+          {
+            "node": "Envio Mensaje Final al Usuario - Aprobado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envio Mensaje de Error a Usuario": {
+      "main": [
+        []
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Mensaje de Persona?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitante Registrado?": {
+      "main": [
+        [
+          {
+            "node": "Mensaje con Texto?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aviso Usuario No Registrado",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Busco Nombre Usuario en Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busco Solicitante": {
+      "main": [
+        [
+          {
+            "node": "Solicitante Registrado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error: Fallo AI": {
+      "main": [
+        [
+          {
+            "node": "Registro de Log de Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error: Usuario No Registrado": {
+      "main": [
+        [
+          {
+            "node": "Registro de Log de Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busco Nombre Usuario en Slack": {
+      "main": [
+        [
+          {
+            "node": "Error: Usuario No Registrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje con Texto?": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aviso de Mensaje Vacio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error: Mensaje Vacio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salida AI Completa?": {
+      "main": [
+        [
+          {
+            "node": "Envio Mensaje de Recepción",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Inserto Registro en Tabla de Tracking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: Salida AI Incompleta",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Envio Mensaje de Error a Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error: Salida AI Incompleta": {
+      "main": [
+        [
+          {
+            "node": "Registro de Log de Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error: Mensaje Vacio": {
+      "main": [
+        [
+          {
+            "node": "Registro de Log de Errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many database pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "jN4V3O1JgCbYt0KC",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "31a53457-ce9e-484a-8970-9c0b2a653053",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "615e6938121563aff9d5ed9d0fa709a9de16ef3808f0c0e59349248f9d24b492"
+  },
+  "nodeGroups": [],
+  "id": "bKtD1DJ4T1a9nlG3",
+  "tags": []
+}
